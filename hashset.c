@@ -64,6 +64,18 @@ unsigned char CreateHash( const char *string )
    return hash;
 }
 
+struct HashSetNode *HashSetNodeCreate( const char *string )
+{
+   struct HashSetNode *HashNode;
+
+   HashNode = ( struct HashSetNode * )calloc( sizeof( struct HashSetNode ), 1 );
+   HashNode->String = calloc( strlen( string ), 1 );
+   strncpy( HashNode->String, string, strlen( string ) );
+   HashNode->Next = ( struct HashSetNode * ) 0;
+
+   return HashNode;
+}
+
 void HashSetAdd( void *HashSet, const char *string )
 {
    if ( HashSet != ( void * ) 0 )
@@ -77,22 +89,13 @@ void HashSetAdd( void *HashSet, const char *string )
          if ( set->Set[ hash ].HashSetStart == ( struct HashSetNode * ) 0 )
          {
             // List is empty, create a list and node.
-            set->Set[ hash ].HashSetStart = ( struct HashSetNode * ) 
-               calloc( sizeof( struct HashSetNode ), 1 );
-            set->Set[ hash ].HashSetEnd = set->Set[ hash ].HashSetStart;
-            set->Set[ hash ].HashSetStart->Next = ( struct HashSetNode * ) 0;
-            set->Set[ hash ].HashSetStart->String = calloc( strlen( string ), 1 );
-            strncpy( set->Set[ hash ].HashSetStart->String, string, strlen( string ) );
+            set->Set[ hash ].HashSetStart = 
+               set->Set[ hash ].HashSetEnd = HashSetNodeCreate( string );
          }
          else
          {
-            struct HashSetNode *Node;
-            Node = ( struct HashSetNode * ) calloc( sizeof( struct HashSetNode ), 1 );
-            Node->Next = ( struct HashSetNode * ) 0;
-            Node->String = ( char * ) calloc( strlen( string ), 1 );
-            strncpy( Node->String, string, strlen( string ) );
-            set->Set[ hash ].HashSetEnd->Next = Node;
-            set->Set[ hash ].HashSetEnd = Node;
+            set->Set[ hash ].HashSetEnd->Next = HashSetNodeCreate( string );
+            set->Set[ hash ].HashSetEnd = set->Set[ hash ].HashSetEnd->Next;
          }
 
       }
@@ -138,12 +141,6 @@ bool HashSetContains( void *HashSet, const char *string )
    return false;
 }
 
-void DestroyEntries( HashSet_t *HashSet )
-{
-
-
-}
-
 void  HashSetPrint( void *HashSet )
 {
    if ( HashSet != ( void * ) 0 )
@@ -172,6 +169,21 @@ void  HashSetPrint( void *HashSet )
    return;
 }
 
+void DestroyEntries( struct HashSetNode *HashNode )
+{
+   struct HashSetNode *Node;
+
+   while ( HashNode )
+   {
+      free( HashNode->String );
+      Node = HashNode;
+      HashNode = HashNode->Next;
+      free( Node );
+   }
+
+   return;
+}
+
 void  HashSetDestroy( void *HashSet )
 {
    if ( HashSet != ( void * ) 0 )
@@ -180,7 +192,10 @@ void  HashSetDestroy( void *HashSet )
 
       if ( set->Signature == SIGNATURE )
       {
-         DestroyEntries( set );
+         for ( int i = 0 ; i < set->NumEntries ; i++ )
+         {
+            DestroyEntries( set->Set[ i ].HashSetStart );
+         }
          free( set->Set );
          free( set );
       }
